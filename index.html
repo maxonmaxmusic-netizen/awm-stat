@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1020" />
+  <title>Аналітична Карта Війни (AKV) — Інтерактивна мапа</title>
+  <meta name="description" content="Аналітична Карта Війни (AKV) — інтерактивна карта з історією зрізів фронту, лінійкою та шарами." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="map" role="application" aria-label="Інтерактивна карта"></div>
+
+  <!-- Логотип -->
+  <a class="brand glass" href="/" aria-label="Аналітична Карта Війни — AKV">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bg-akv" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ef4444"/>
+            <stop offset="1" stop-color="#7c3aed"/>
+          </linearGradient>
+        </defs>
+        <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#bg-akv)"/>
+        <path d="M16 6 L20 14 L28 16 L20 18 L16 26 L12 18 L4 16 L12 14 Z" fill="#ffd54a" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>
+        <circle cx="16" cy="16" r="2" fill="#0b1020"/>
+      </svg>
+    </span>
+    <span class="brand-text">
+      <strong>Аналітична Карта Війни</strong>
+      <em>AKV</em>
+    </span>
+  </a>
+
+  <!-- Пошук -->
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
+    </svg>
+    <input id="q" type="search" placeholder="Шукати адресу…" autocomplete="off" />
+  </div>
+
+  <!-- Перемикач стилів мапи -->
+  <div class="layer-switch" role="group" aria-label="Стиль мапи">
+    <button class="ls-btn active" data-style="satellite" type="button" title="Супутник">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+      <span>Супутник</span>
+    </button>
+    <button class="ls-btn" data-style="roadmap" type="button" title="Схема">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.4 2.2A1 1 0 0 1 2.4 21V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6"/><path d="M2 10h20"/><circle cx="7" cy="14" r="1.5"/></svg>
+      <span>Схема</span>
+    </button>
+    <button class="ls-btn" data-style="terrain" type="button" title="Місцевість">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 20 6-10 4 6 4-4 4 8z"/></svg>
+      <span>Місцевість</span>
+    </button>
+    <button class="ls-btn" data-style="google" type="button" title="Google (стандартна схема)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C7 2 3 6 3 11s4 9 9 9 9-4 9-9-4-9-9-9z"/><circle cx="12" cy="11" r="3"/></svg>
+      <span>Google</span>
+    </button>
+    <button class="ls-btn" data-style="dark" type="button" title="Google темна">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <span>Темна</span>
+    </button>
+  </div>
+
+  <!-- Шар «Фронт»: тогл і лічильник -->
+  <div class="front-panel glass" id="frontPanel">
+    <button class="fp-toggle" id="frontToggle" type="button" aria-pressed="true">
+      <span class="fp-dot"></span>
+      <span class="fp-label">Фронт</span>
+      <span class="fp-count" id="frontCount">…</span>
+    </button>
+    <button class="fp-reload" id="frontReload" type="button" title="Перезавантажити">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+    </button>
+    <button class="fp-fit" id="frontFit" type="button" title="Показати все">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4M21 7V3h-4M3 17v4h4M21 17v4h-4"/></svg>
+    </button>
+  </div>
+
+  <!-- Статус завантаження KML -->
+  <div class="front-status" id="frontStatus" hidden></div>
+
+  <!-- Панель лінійки / площі -->
+  <div class="ruler-panel glass" id="rulerPanel">
+    <button class="rp-toggle" id="rulerToggle" type="button" aria-pressed="false" title="Виміряти відстань">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 8.7 8.7 21.3a4 4 0 0 1-5.6 0L2.7 21a4 4 0 0 1 0-5.6L15.3 2.7a4 4 0 0 1 5.6 0L21 2.8a4 4 0 0 1 0 5.6z"/><path d="m7.5 10.5 2 2"/><path d="m10.5 7.5 2 2"/><path d="m13.5 4.5 2 2"/><path d="m4.5 13.5 2 2"/></svg>
+      <span>Лінійка</span>
+    </button>
+    <button class="rp-toggle" id="areaToggle" type="button" aria-pressed="false" title="Виміряти площу">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 3v18M3 15h18M15 3v18"/></svg>
+      <span>Площа</span>
+    </button>
+    <div class="rp-info">
+      <div class="rp-total"><span id="rLabel">Загалом</span><strong id="rTotal">0 м</strong></div>
+      <div class="rp-hint" id="rHint">Натисни «Лінійка», потім клікай по карті</div>
+    </div>
+    <button class="rp-clear" id="rulerClear" type="button" title="Очистити">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    </button>
+  </div>
+
+  <!-- Панель дат (зрізи фронту) -->
+  <div class="date-panel glass" id="datePanel">
+    <button class="dp-head" id="dateToggle" type="button" aria-expanded="false">
+      <span>📅 <strong id="dateCurrent">сьогодні</strong></span>
+      <span class="dp-caret">▾</span>
+    </button>
+    <div class="dp-body" id="dateBody" hidden></div>
+  </div>
+
+  <!-- Панель шарів (Folders із KML) -->
+  <div class="layer-panel glass" id="layerPanel">
+    <button class="lp-head" id="layerToggle" type="button" aria-expanded="true">
+      <span>📚 Шари</span>
+      <span class="lp-count" id="layerCount">0</span>
+    </button>
+    <div class="lp-body" id="layerPanelList"></div>
+  </div>
+
+  <!-- Telegram -->
+  <a class="tg-fab" href="https://t.me/AWM_UA_MAP" target="_blank" rel="noopener" aria-label="Telegram-канал AKV">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.04 15.39 8.9 19.4c.36 0 .51-.15.7-.34l1.66-1.59 3.45 2.53c.63.35 1.08.17 1.25-.59l2.27-10.65h.01c.2-.94-.34-1.31-.95-1.08L3.3 11.95c-.91.36-.9.87-.16 1.1l3.83 1.19 8.88-5.61c.42-.27.8-.12.49.16l-6.3 5.6z"/></svg>
+    <span class="tg-fab-label">@AWM_UA_MAP</span>
+  </a>
+
+  <style>
+    .seg-tip, .feat-tip {
+      background: rgba(15,21,48,0.95) !important;
+      color: #e8ecf8 !important;
+      border: 1px solid rgba(255,255,255,0.16) !important;
+      border-radius: 8px !important;
+      padding: 4px 8px !important;
+      font: 600 0.82rem 'Manrope', sans-serif !important;
+      box-shadow: 0 8px 22px -10px rgba(0,0,0,0.6) !important;
+      white-space: nowrap;
+    }
+    .seg-tip::before, .feat-tip::before { display: none !important; }
+  </style>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Якщо автовизначення URL бекенда не спрацює, можна вручну задати:
+       <script>window.__BACKEND_URL__ = 'https://api.uaanalyticmap.pp.ua';</script>
+       Зараз залишено автоматичне визначення. -->
+  <script src="app.js" defer></script>
+</body>
+</html>

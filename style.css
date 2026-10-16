@@ -1,0 +1,573 @@
+﻿/* ========== Базове ========== */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0b1020;
+  color: #e8ecf8;
+  font-family: 'Manrope', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; }
+
+#map {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  background: #0a1530;
+  z-index: 1;
+}
+
+/* Ховаємо дефолтний зум і атрибуцію */
+.leaflet-control-zoom,
+.leaflet-control-attribution,
+.leaflet-bar { display: none !important; }
+
+/* Курсори */
+.leaflet-container { cursor: grab !important; }
+.leaflet-container:active { cursor: grabbing !important; }
+.leaflet-container.ruler-on { cursor: crosshair !important; }
+.leaflet-container.ruler-on:active { cursor: crosshair !important; }
+
+/* ========== Загальний вигляд «скляних» плашок ========== */
+.search,
+.layer-switch,
+.ruler-panel,
+.tg-fab,
+.front-panel,
+.date-panel,
+.layer-panel {
+  background: rgba(15, 21, 48, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: 0 14px 36px -16px rgba(0, 0, 0, 0.6);
+}
+
+/* ========== Логотип ========== */
+.brand {
+  position: absolute;
+  top: 16px; left: 16px;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: #e8ecf8;
+  transition: transform .15s ease;
+}
+.brand:hover { transform: translateY(-1px); }
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px -8px rgba(124, 58, 237, 0.6);
+}
+.brand-text {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.05;
+  font-family: 'Manrope', system-ui, sans-serif;
+}
+.brand-text strong {
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  background: linear-gradient(135deg, #7dd3fc, #c4b5fd);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  white-space: nowrap;
+}
+.brand-text em {
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #97a3c2;
+}
+
+/* ========== Пошук ========== */
+.search {
+  position: absolute;
+  top: 72px; left: 16px;
+  z-index: 1000;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  width: min(360px, calc(100vw - 32px));
+  border-radius: 999px;
+  transition: border-color .2s, width .25s;
+}
+.search:focus-within {
+  border-color: rgba(124, 58, 237, 0.6);
+  width: min(440px, calc(100vw - 32px));
+}
+.search svg { width: 16px; height: 16px; color: #97a3c2; flex-shrink: 0; }
+.search input {
+  flex: 1; min-width: 0;
+  background: transparent; border: 0; outline: 0;
+  color: #e8ecf8;
+  font: 500 0.95rem 'Manrope', sans-serif;
+  padding: 8px 0;
+}
+.search input::placeholder { color: #97a3c2; }
+
+/* ========== Перемикач стилів мапи ========== */
+.layer-switch {
+  position: absolute;
+  top: 16px; right: 16px;
+  z-index: 1000;
+  display: flex;
+  padding: 4px;
+  border-radius: 14px;
+  gap: 2px;
+}
+.ls-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  color: #97a3c2;
+  font: 600 0.82rem 'Manrope', sans-serif;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+  white-space: nowrap;
+}
+.ls-btn svg { width: 16px; height: 16px; }
+.ls-btn:hover { background: rgba(255,255,255,0.06); color: #e8ecf8; }
+.ls-btn.active {
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  color: white;
+  box-shadow: 0 6px 18px -8px rgba(124,58,237,0.6);
+}
+
+/* ========== Панель «Фронт» ========== */
+.front-panel {
+  position: absolute;
+  top: 70px; right: 16px;
+  z-index: 1000;
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px;
+  border-radius: 14px;
+}
+.fp-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #e8ecf8;
+  font: 700 0.9rem 'Manrope', sans-serif;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.fp-toggle .fp-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ef4444; box-shadow: 0 0 12px #ef4444;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+.fp-toggle .fp-count {
+  background: rgba(255,255,255,0.1);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: #97a3c2;
+  min-width: 24px;
+  text-align: center;
+}
+.fp-toggle.off { opacity: 0.6; }
+.fp-toggle.off .fp-dot { background: #4b5563; box-shadow: none; animation: none; }
+.fp-reload, .fp-fit {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #97a3c2;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s;
+}
+.fp-reload svg, .fp-fit svg { width: 16px; height: 16px; }
+.fp-reload:hover, .fp-fit:hover {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: rgba(124, 58, 237, 0.45);
+  color: #c4b5fd;
+}
+
+/* Статус */
+.front-status {
+  position: absolute;
+  top: 70px; left: 50%; transform: translateX(-50%);
+  z-index: 1100;
+  padding: 10px 18px;
+  background: rgba(15, 21, 48, 0.95);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 999px;
+  color: #e8ecf8;
+  font: 600 0.85rem 'Manrope', sans-serif;
+  box-shadow: 0 14px 36px -16px rgba(0,0,0,0.6);
+  display: flex; align-items: center; gap: 10px;
+}
+.front-status.error { border-color: #ef4444; color: #fda4af; }
+.front-status .spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: #7c3aed;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ========== Панель лінійки ========== */
+.ruler-panel {
+  position: absolute;
+  left: 16px; bottom: 18px;
+  z-index: 1000;
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px 8px 8px;
+  border-radius: 14px;
+  max-width: calc(100vw - 32px);
+}
+.rp-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #e8ecf8;
+  font: 700 0.9rem 'Manrope', sans-serif;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .2s, transform .1s;
+}
+.rp-toggle svg { width: 18px; height: 18px; }
+.rp-toggle:hover { background: rgba(255,255,255,0.12); }
+.rp-toggle.active {
+  background: linear-gradient(135deg, #f43f5e, #f59e0b);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 10px 24px -8px rgba(244,63,94,0.55);
+}
+.rp-info {
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 0;
+  padding: 0 4px;
+}
+.rp-total { display: flex; gap: 8px; align-items: baseline; font-size: 0.82rem; color: #97a3c2; }
+.rp-total strong {
+  color: #e8ecf8;
+  font: 800 1.05rem 'Manrope', sans-serif;
+  letter-spacing: -0.01em;
+}
+.rp-hint { font-size: 0.74rem; color: #97a3c2; max-width: 320px; }
+.rp-clear {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #97a3c2;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s;
+}
+.rp-clear svg { width: 16px; height: 16px; }
+.rp-clear:hover {
+  background: rgba(244,63,94,0.15);
+  border-color: rgba(244,63,94,0.45);
+  color: #fda4af;
+}
+
+/* ========== Telegram FAB ========== */
+.tg-fab {
+  position: absolute;
+  right: 18px; bottom: 18px;
+  z-index: 1000;
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 18px 12px 14px;
+  background: linear-gradient(135deg, #229ED9, #2AABEE);
+  color: #fff;
+  border-radius: 999px;
+  font: 700 0.92rem 'Manrope', sans-serif;
+  text-decoration: none;
+  box-shadow: 0 18px 40px -14px rgba(34, 158, 217, 0.7), 0 0 0 1px rgba(255,255,255,0.08) inset;
+  transition: transform .2s, box-shadow .2s;
+}
+.tg-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 50px -16px rgba(34, 158, 217, 0.85), 0 0 0 1px rgba(255,255,255,0.12) inset;
+}
+.tg-fab:active { transform: translateY(0); }
+.tg-fab svg { width: 20px; height: 20px; }
+.tg-fab-label { white-space: nowrap; }
+
+/* ========== Маркери-точки (кругла крапка з кільцем) ========== */
+.kml-marker { background: transparent !important; border: 0 !important; }
+.kml-marker .kml-dot {
+  transition: transform .12s ease, box-shadow .12s ease;
+  cursor: pointer;
+}
+.kml-marker:hover .kml-dot {
+  transform: scale(1.12);
+}
+
+/* ========== Полігони (покращений стиль) ========== */
+.leaflet-overlay-pane path.kml-poly {
+  cursor: pointer;
+  transition: filter .15s ease, stroke-width .12s ease, fill-opacity .12s ease;
+}
+.leaflet-overlay-pane path.kml-poly:hover {
+  filter: brightness(1.12) drop-shadow(0 0 6px rgba(255,255,255,0.18));
+}
+
+/* ========== Покращений попап ========== */
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 21, 48, 0.96) !important;
+  color: #e8ecf8 !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(255,255,255,0.16) !important;
+  box-shadow: 0 18px 50px -14px rgba(0,0,0,0.65) !important;
+  backdrop-filter: blur(14px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
+  padding: 0 !important;
+}
+.leaflet-popup-tip {
+  background: rgba(15, 21, 48, 0.96) !important;
+  border: 1px solid rgba(255,255,255,0.16) !important;
+  box-shadow: none !important;
+}
+.leaflet-popup-content {
+  margin: 14px 16px 12px;
+  max-width: 320px;
+  font: 500 0.9rem 'Manrope', sans-serif;
+  color: #e8ecf8;
+}
+.leaflet-popup-close-button {
+  color: #97a3c2 !important;
+  font-size: 22px !important;
+  padding: 4px 8px !important;
+}
+.leaflet-popup-close-button:hover { color: #fff !important; }
+.pop-title {
+  font: 800 1.02rem 'Manrope', sans-serif;
+  margin: 0 0 10px;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+.pop-photos {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.pop-photos:has(a:nth-child(2)) { grid-template-columns: 1fr 1fr; }
+.pop-photos a {
+  display: block;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.04);
+  aspect-ratio: 16/10;
+  cursor: zoom-in;
+  transition: transform .15s ease;
+}
+.pop-photos a:hover { transform: scale(1.02); }
+.pop-photos img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 0;
+}
+.pop-desc {
+  color: #c4cce0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.pop-desc a { color: #7dd3fc; }
+.pop-ext {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+  font-size: 0.84rem;
+}
+.pop-ext td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  vertical-align: top;
+}
+.pop-ext td:first-child {
+  color: #97a3c2;
+  font-weight: 600;
+  width: 38%;
+  white-space: nowrap;
+}
+.pop-ext td:last-child {
+  color: #e8ecf8;
+  word-break: break-word;
+}
+.pop-ext td a { color: #7dd3fc; text-decoration: none; }
+.pop-ext td a:hover { text-decoration: underline; }
+.pop-meta {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  font-size: 0.74rem;
+  margin-bottom: 8px;
+}
+.pop-meta span {
+  background: rgba(124, 58, 237, 0.18);
+  color: #c4b5fd;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.pop-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  font: 700 0.84rem 'Manrope', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 6px 18px -6px rgba(124, 58, 237, 0.6);
+  transition: transform .12s, box-shadow .12s;
+}
+.pop-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgba(124, 58, 237, 0.7); }
+.pop-btn:active { transform: translateY(0); }
+
+/* ========== Медіа-запити ========== */
+@media (max-width: 720px) {
+  .layer-switch { top: 70px; right: 12px; }
+  .ls-btn span { display: none; }
+  .ls-btn { padding: 8px 10px; }
+  .ruler-panel { left: 12px; right: 12px; bottom: 78px; }
+  .rp-hint { display: none; }
+  .tg-fab-label { display: none; }
+  .tg-fab { padding: 12px; right: 12px; bottom: 12px; }
+  .search { top: 12px; left: 12px; right: 12px; width: auto; }
+  .search:focus-within { width: auto; }
+  .front-panel { top: 122px; left: 12px; right: 12px; justify-content: space-between; }
+  .front-status { top: 178px; }
+}
+
+@media (max-width: 380px) {
+  .layer-switch { flex-wrap: wrap; max-width: calc(100vw - 24px); }
+}
+/* ========== ������ ��� ========== */
+.date-panel {
+  position: absolute;
+  top: 130px;
+  left: 16px;
+  z-index: 950;
+  width: 240px;
+  max-width: calc(100vw - 32px);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  display: block;
+}
+.dp-head {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: transparent;
+  border: 0;
+  color: #e8ecf8;
+  font: 500 0.86rem 'Manrope', sans-serif;
+  cursor: pointer;
+  text-align: left;
+}
+.dp-head strong { font-weight: 800; margin-left: 4px; }
+.dp-caret { color: #97a3c2; transition: transform .15s; }
+.dp-head[aria-expanded="true"] .dp-caret { transform: rotate(180deg); }
+.dp-body { padding: 4px 8px 10px; max-height: 280px; overflow-y: auto; }
+.dp-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+.dp-item:hover { background: rgba(255,255,255,0.06); }
+.dp-item.is-current { background: rgba(124,58,237,0.18); color: #c4b5fd; font-weight: 600; }
+.dp-date { flex: 1; }
+.muted { color: #97a3c2; }
+
+/* ========== ������ ���� ========== */
+.layer-panel {
+  position: absolute;
+  top: 460px;
+  left: 16px;
+  z-index: 950;
+  width: 240px;
+  max-width: calc(100vw - 32px);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 14px;
+}
+.lp-head {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  background: transparent;
+  border: 0;
+  color: #e8ecf8;
+  font: 700 0.86rem 'Manrope', sans-serif;
+  cursor: pointer;
+  text-align: left;
+}
+.lp-count {
+  background: rgba(124,58,237,0.18);
+  color: #c4b5fd;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+.lp-body { padding: 4px 8px 10px; max-height: 320px; overflow-y: auto; }
+.layer-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+.layer-row:hover { background: rgba(255,255,255,0.05); }
+.layer-row input[type="checkbox"] { margin: 0; cursor: pointer; }
+.layer-eye { font-size: 0.86rem; }
+.layer-name { flex: 1; color: #e8ecf8; }
+.layer-count {
+  color: #97a3c2;
+  font-size: 0.74rem;
+  background: rgba(255,255,255,0.06);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+/* ========== ������ "�����" � ruler-panel ========== */
+#areaToggle {
+  margin-left: 4px;
+  background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(124,58,237,0.15));
+}
+#areaToggle.active {
+  background: linear-gradient(135deg, #06b6d4, #7c3aed);
+  color: #fff;
+  box-shadow: 0 6px 18px -8px rgba(6,182,212,0.6);
+}
+
+@media (max-width: 720px) {
+  .layer-panel, .date-panel { left: 12px; right: 12px; width: auto; }
+  .date-panel { top: 168px; }
+  .layer-panel { top: auto; bottom: 130px; }
+}
