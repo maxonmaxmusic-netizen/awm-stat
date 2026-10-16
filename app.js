@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
  * Fronty Map
  * - 4 базових шари (Esri Sat/Road/Topo + Google через ключ)
  * - Лінійка з per-segment
@@ -14,6 +14,19 @@
   //  Утиліти
   // ============================================================
   function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[m]);
+  }
+  // Парсер імені R2 файлу для фронту: uam-MM-DD-YY-HH-MM[-SS].kmz → { date, time }
+  function parseR2KeyFront(name) {
+    if (!name) return null;
+    const m = String(name).match(/^(uam|akv)-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})(?:-\d{2})?\.kmz$/);
+    if (!m) return null;
+    const [, , mm, dd, yy, HH, MM] = m;
+    return { date: `20${yy}-${mm}-${dd}`, time: `${HH}:${MM}` };
+  }
+  // Стара функція — залишив для зворотної сумісності (була раніше)
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
   function sanitizeHtml(html) {
@@ -263,14 +276,7 @@
 
   const BACKEND_WS = BACKEND_URL.replace(/^http/, 'ws') + '/ws';
 
-  const frontState = {
-    enabled: true,
-    layer: null,
-    features: [],
-    bounds: null,
-  };
-  // Стан шарів (Folders з KML). Ім'я = назва папки.
-  // Кожен item._layer = назва папки; якщо такого шару немає в списку — вважаємо enabled.
+  // ========== Стан шарів (Folders з KML) ==========
   const layerState = { kmlLayers: [] };
   function isLayerEnabled(name) {
     const l = layerState.kmlLayers.find(x => x.name === name);
@@ -324,8 +330,10 @@
     });
   }
 
-  // Поточна дата зрізу (null = "останній доступний")
-  let currentDate = null;
+  // ========== Вибір дати (зріз фронту) ==========
+  // currentKey = повний ключ R2 файлу (наприклад "uam-10-15-26-17-02.kmz"),
+  // або null = "останній доступний"
+  let currentKey = null;
   async function loadDateList() {
     const body = document.getElementById('dateBody');
     if (!body) return;
@@ -348,29 +356,35 @@
     }
     if (panel) panel.style.display = 'block';
     const currentRel = (current && current.relPath) || '';
-    let shownDate;
-    if (currentDate) shownDate = currentDate;
-    else if (currentRel) shownDate = currentRel.split('/')[0];
-    else shownDate = history[0].date;
-    if (head) head.textContent = shownDate;
-    const items = ['<div class="dp-item" data-date="">' +
+    let shownLabel;
+    if (currentKey) {
+      const p = parseR2KeyFront(currentKey);
+      shownLabel = p ? `${p.date} · ${p.time}` : currentKey;
+    } else if (currentRel) {
+      const p = parseR2KeyFront(currentRel);
+      shownLabel = p ? `${p.date} · ${p.time}` : currentRel;
+    } else {
+      shownLabel = history.length ? history[0].date : 'сьогодні';
+    }
+    if (head) head.textContent = shownLabel;
+    const items = ['<div class="dp-item" data-key="">' +
       '<span>📅</span><span class="dp-date">Останній доступний</span>' +
-      (currentDate === null ? ' <span style="color:#7dd3fc;">●</span>' : '') +
+      (currentKey === null ? ' <span style="color:#7dd3fc;">●</span>' : '') +
       '</div>'];
     for (const day of history) {
       for (const f of day.files) {
         const isCur = f.relPath === currentRel;
-        items.push('<div class="dp-item ' + (currentDate === day.date ? 'is-current' : '') + '" data-date="' + day.date + '">' +
+        items.push('<div class="dp-item ' + (currentKey === f.relPath ? 'is-current' : '') + '" data-key="' + escapeHtml(f.relPath) + '">' +
           '<span>📄</span>' +
           '<span class="dp-date">' + day.date + ' · ' + f.time + '</span>' +
-          (isCur && currentDate === null ? ' <span style="color:#7dd3fc;">●</span>' : '') +
+          (isCur && currentKey === null ? ' <span style="color:#7dd3fc;">●</span>' : '') +
           '</div>');
       }
     }
     body.innerHTML = items.join('');
     body.querySelectorAll('.dp-item').forEach(el => {
       el.addEventListener('click', () => {
-        currentDate = el.dataset.date || null;
+        currentKey = el.dataset.key || null;
         document.getElementById('dateToggle').setAttribute('aria-expanded', 'false');
         body.setAttribute('hidden', '');
         loadFrontAuto(true);
@@ -389,6 +403,13 @@
     });
     loadDateList();
   }
+
+  const frontState = {
+    enabled: true,
+    layer: null,
+    features: [],
+    bounds: null,
+  };
 
   const fToggle = document.getElementById('frontToggle');
   const fReload = document.getElementById('frontReload');
@@ -414,7 +435,7 @@
     }
   }
 
-  // Парсер KML — повертає { placemarks, layers } (layers = список папок <Folder>)
+  // Парсер KML — повертає { placemarks, layers }
   function parseKML(xmlText) {
     const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
     const errNode = doc.querySelector('parsererror');
@@ -827,11 +848,9 @@
     return FRONT_REMOTE_URL || (BACKEND_URL + '/kmz');
   })();
 
-  // Поточна дата зрізу (null = "останній доступний")
-  // Визначається пізніше через API історії.
   const KML_SOURCES = [
-    // 1. Бекенд: API з параметром дати, або /kmz (поточний)
-    () => BACKEND_URL + (currentDate ? `/api/kmz?date=${encodeURIComponent(currentDate)}&t=` : '/kmz?t=') + Date.now(),
+    // 1. Бекенд: якщо вибрано конкретний зріз — передаємо key
+    () => BACKEND_URL + (currentKey ? `/api/kmz?key=${encodeURIComponent(currentKey)}&t=` : '/kmz?t=') + Date.now(),
     // 2. Локальний файл
     () => `./Ukraine%20Analystic%20Map%20UAM.kmz?t=${Date.now()}`,
     () => `./front.kmz?t=${Date.now()}`,
@@ -871,7 +890,6 @@
 
   async function applyKmlText(text, { fit = true } = {}) {
     const parsed = parseKML(text);
-    // Підтримка старого і нового формату
     const placemarks = Array.isArray(parsed) ? parsed : parsed.placemarks;
     const kmlLayers = (parsed && parsed.layers) || [];
     if (!placemarks.length) throw new Error('KML не містить обʼєктів');
@@ -899,7 +917,6 @@
     frontState.features = [];
     frontState.bounds = null;
 
-    // Ініціалізуємо шари (Folders)
     layerState.kmlLayers = kmlLayers.map(l => ({ ...l, enabled: true }));
     renderLayerPanel();
 
@@ -955,13 +972,13 @@
   let discoveredNetworkLink = null;
 
   async function loadFrontAuto(forceFit = true) {
-    // При виборі конкретної дати — обов'язково скидаємо кеш NetworkLink,
+    // При виборі конкретного зрізу — обов'язково скидаємо кеш NetworkLink,
     // інакше будемо знову тягнути свіжий Google KML через проксі замість
     // архівного зрізу з бекенда.
-    if (currentDate) discoveredNetworkLink = null;
+    if (currentKey) discoveredNetworkLink = null;
 
     const attempts = [];
-    console.log('[Fronty] loadFrontAuto: currentDate=', currentDate, 'discoveredNetworkLink=', !!discoveredNetworkLink ? 'set' : 'null');
+    console.log('[Fronty] loadFrontAuto: currentKey=', currentKey, 'discoveredNetworkLink=', !!discoveredNetworkLink ? 'set' : 'null');
 
     // Спочатку шукаємо NetworkLink у всіх локальних джерелах
     let networkLinkUrl = discoveredNetworkLink;
@@ -1129,7 +1146,6 @@
     const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
     return 2 * R * Math.asin(Math.sqrt(h));
   }
-  // Сферична площа (Spherical excess, ґрунтується на equal-area projection)
   function ringAreaSqm(latlngs) {
     if (latlngs.length < 3) return 0;
     const R = 6378137;
@@ -1142,7 +1158,7 @@
     return Math.abs(total * R * R / 2);
   }
 
-  // Блокування кліків на обʼєктах фронту під час вимірювання
+  // Блокування кліків на плейсмарках під час вимірювання
   function setFrontInteractionBlocked(blocked) {
     if (!frontState.layer) return;
     frontState.layer.eachLayer(l => {
@@ -1175,7 +1191,7 @@
   }
 
   function updateTotal() {
-    if (area.active) return; // площа має власний update
+    if (area.active) return;
     rTotal.textContent = fmt(measure.totalMeters);
     rLabel.textContent = 'Загалом';
     if (measure.active && measure.points.length > 0) {
@@ -1186,7 +1202,6 @@
       rHint.textContent = 'Натисни «Лінійка» або «Площа»';
     }
   }
-
   function startMeasure() {
     if (area.active) stopArea();
     measure.active = true;
@@ -1414,7 +1429,7 @@
           if (msg.type === 'kmz-updated') {
             console.log('[WS] Оновлення KMZ від бекенда:', msg);
             loadDateList();
-            if (currentDate === null) loadFrontAuto(false);
+            if (currentKey === null) loadFrontAuto(false);
           } else if (msg.type === 'hello') {
             console.log('[WS] Привіт від бекенда');
           }
