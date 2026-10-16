@@ -26,9 +26,6 @@
     const [, , mm, dd, yy, HH, MM] = m;
     return { date: `20${yy}-${mm}-${dd}`, time: `${HH}:${MM}` };
   }
-  // Стара функція — залишив для зворотної сумісності (була раніше)
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
   function sanitizeHtml(html) {
     const tpl = document.createElement('template');
     tpl.innerHTML = html;
